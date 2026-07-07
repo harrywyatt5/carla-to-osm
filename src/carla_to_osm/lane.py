@@ -1,5 +1,5 @@
 from lxml import etree
-from point import Point
+from carla_to_osm.point import Point
 import numpy as np
 
 class Lane: 

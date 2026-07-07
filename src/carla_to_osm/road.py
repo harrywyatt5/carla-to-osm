@@ -1,5 +1,5 @@
 from lxml import etree
-from lane import Lane
+from carla_to_osm.lane import Lane
 
 class Road:
     def __init__(self, map, node):

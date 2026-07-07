@@ -1,5 +1,5 @@
 [project]
-name = "carla-to-osm"
+name = "carla_to_osm"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -14,3 +14,6 @@ dependencies = [
 carla = [
     "carla>=0.9.16"
 ]
+
+[project.scripts]
+carla_to_osm = "carla_to_osm.main:main"
