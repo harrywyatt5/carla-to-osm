@@ -1,4 +1,4 @@
 from lxml import etree
 
-class OpenDriveMap:
+class OpenDriveConnection:
     pass
