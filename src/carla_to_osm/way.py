@@ -85,9 +85,21 @@ class Way:
             if not self._has_joined_ends[0]:
                 # Compare to its start node
                 if not way._has_joined_ends[0]:
-                    pass
+                    distance, angle = Way._compare_segment(start_angle, self.start, way.start, way.start_seg)
 
+    @staticmethod
+    def _compare_segment(target_angle, target_point, other_point, other_segment):
+        if not other_segment:
+            return (math.inf, math.inf)
+        
+        other_angle = other_segment[0].get_angle(other_segment[1])
+        distance = target_point.get_distance(other_point)
 
+        angle = abs(target_angle - other_angle) % math.pi
+        if angle > (math.pi / 2):
+            angle = math.pi - angle
+
+        return (distance, angle)
 
     @staticmethod
     def create_way_from_lane(lane, step_size):
