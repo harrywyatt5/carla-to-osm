@@ -1,5 +1,6 @@
 import carla
 from lxml import etree
+from carla_to_osm.road import Road
 
 class CarlaServer:
     def __init__(self, server_ip: str, port: int, max_timeout: float):
@@ -8,5 +9,12 @@ class CarlaServer:
         self._world = self._server.get_world()
         self._map = self._world.get_map()
     
-    def get_opendrive_world(self):
-        map = etree.fromstring(self._map.to_opendrive().encode("utf-8"))
+    def get_map_roads(self):
+        opendrive_map = etree.fromstring(self._map.to_opendrive().encode("utf-8"))
+        return [Road(self._map, road) for road in opendrive_map.findall("road")] 
+
+    def get_map_crosswalks(self):
+        pass
+
+    def get_map_environmentals(self):
+        pass

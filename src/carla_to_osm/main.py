@@ -1,15 +1,38 @@
+from carla_to_osm.carla_server import CarlaServer
+from carla_to_osm.way import Way
 import argparse
+import math
 
 def create_argparse_object() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Converts from CARLA maps currently open to a OpenStreetMaps file")
     parser.add_argument("-o", "--output_file", required=False, type=str, default="./map.osm")
     parser.add_argument("-s", "--server", required=False, type=str, default="127.0.0.1")
+    parser.add_argument("-c", "--step_size", required=False, type=float, default=0.5)
     parser.add_argument("-p", "--port", required=False, type=int, default=2000)
+    parser.add_argument("-t", "--timeout", required=False, type=float, default=10.0)
+    parser.add_argument("-d", "--max_distance", required=False, type=float, default=5.0)
+    parser.add_argument("-a", "--max_angle", required=False, type=float, default=30.0)
     return parser
 
 def main() -> None:
     args = create_argparse_object().parse_args()
-    print("Hello from carlatoosm!")
+    server = CarlaServer(args.server, args.port, args.timeout)
+
+    # Create ways from all our roads / lanes
+    roads = server.get_map_roads()
+    ways = [Way.create_way_from_lane(lane, args.step_size) for road in roads for lane in road.lane]
+
+    # TODO: crosswalk logic
+
+    # See if any of our ways can be connected up together
+    angle_in_radians = math.radians(args.max_angle)
+    new_ways = []
+    for way in ways:
+        ways_tuple = way.join_other_ways(ways, args.max_distance, angle_in_radians)
+        new_ways = new_ways + [unpacked_way for unpacked_way in ways_tuple if unpacked_way]
+
+    ways = ways + new_ways
+    
 
 if __name__ == "__main__":
     main()

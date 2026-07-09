@@ -23,12 +23,23 @@ class WayType(enum.Enum):
 
 
 class Way:
+    _global_way_count = 0
+
     def __init__(self, way_type, nodes):
+        self._id = Way._global_way_count
         self._type = way_type
         self._nodes = nodes
         self._start = nodes[0]
         self._end = nodes[-1]
+        self._start_seg = []
+        self._end_seg = []
         self._has_joined_ends = (False, False)
+
+        Way._global_way_count = Way._global_way_count + 1
+
+    @property
+    def id(self):
+        return self._id
 
     @property
     def type(self):
@@ -47,60 +58,131 @@ class Way:
         if len(self._nodes) < 2:
             return []
         
-        return self._nodes[:2]
+        if not self._start_seg:
+            self._start_seg = self._nodes[:2]
+        
+        return self._start_seg
     
     @property
     def end_seg(self):
         if len(self._nodes) < 2:
             return []
         
-        return self._nodes[-2:]
+        if not self._end_seg:
+            self._end_seg = self._nodes[-2:]
+        
+        return self._end_seg
 
     @property
     def nodes(self):
         return self._nodes
     
-    def try_join_to_other_ways(self, ways, max_radius, max_angle):
-        # If both ends of this way have already been joined up, then let's just not do this
-        if self._has_joined_ends[0] and self._has_joined_ends[1]:
-            return (None, None)
-        
-        # If our way is long enough...
-        start_seg = self.start_seg
-        end_seg = self.end_seg
-        if not start_seg or not end_seg:
-            return (None, None)
-        
-        start_angle = start_seg[0].get_angle(start_seg[1])
-        end_angle = end_seg[0].get_angle(end_seg[1])
+    def join_other_ways(self, ways, max_distance, max_angle):
+        if all(self._has_joined_ends) or not self.start_seg or not self.end_seg:
+            return
 
-        start_new_way = None
-        end_new_way = None
+        start_angle = self.start_seg[0].get_angle(self.start_seg[1])
+        end_angle = self.end_seg[0].get_angle(self.end_seg[1])
 
-        best_way = [None, None]
-        best_distance = [math.inf, math.inf]
-        best_angle = [math.inf, math.inf]
+        best_start_way, best_start_point, best_start_score = None, None, math.inf
+        best_end_way, best_end_point, best_end_score = None, None, math.inf
+
+        open_start_point = not self._has_joined_ends[0]
+        open_end_point = not self._has_joined_ends[1]
+
         for way in ways:
-            # Compare with the start way, if it's not already been joined up
-            if not self._has_joined_ends[0]:
-                # Compare to its start node
-                if not way._has_joined_ends[0]:
-                    distance, angle = Way._compare_segment(start_angle, self.start, way.start, way.start_seg)
+            if way.type != self.type:
+                continue
+
+            if not way._has_joined_ends[0]:
+                if open_start_point:
+                    best_start_way, best_start_point, best_start_score = self._evaluate_candidate(
+                        best_start_way, best_start_point, best_start_score,
+                        self.start, start_angle, way, way.start, way.start_seg,
+                        max_distance, max_angle
+                    )
+
+                if open_end_point:
+                    best_end_way, best_end_point, best_end_score = self._evaluate_candidate(
+                        best_end_way, best_end_point, best_end_score,
+                        self.end, end_angle, way, way.start, way.start_seg,
+                        max_distance, max_angle
+                    )
+
+            if not way._has_joined_ends[1]:
+                if open_start_point:
+                    best_start_way, best_start_point, best_start_score = self._evaluate_candidate(
+                        best_start_way, best_start_point, best_start_score,
+                        self.start, start_angle, way, way.end, way.end_seg,
+                        max_distance, max_angle
+                    )
+                
+                if open_end_point:
+                    best_end_way, best_end_point, best_end_score = self._evaluate_candidate(
+                        best_end_way, best_end_point, best_end_score,
+                        self.end, end_angle, way, way.end, way.end_seg,
+                        max_distance, max_angle
+                    )
+        
+        new_way_for_start = None
+        new_way_for_end = None
+        if best_start_way:
+            new_way_for_start = Way._create_bridging_way(self.start, best_start_way, best_start_point, self.type)
+            self._has_joined_ends = (True, self._has_joined_ends[1])
+        
+        if best_end_way:
+            new_way_for_end = Way._create_bridging_way(self.end, best_end_way, best_end_point, self.type)
+            self._has_joined_ends = (self._has_joined_ends[0], True)
+
+        return (new_way_for_start, new_way_for_end)
+
+    def __eq__(self, other):
+        if not isinstance(self, Way):
+            return NotImplemented
+        
+        return self.id == self.other
+
+    def __hash__(self):
+        return self.id
 
     @staticmethod
-    def _compare_segment(target_angle, target_point, other_point, other_segment):
-        if not other_segment:
-            return (math.inf, math.inf)
+    def _create_bridging_way(source_point, target_way, target_point, way_type):
+        if target_way.start == target_point:
+            target_way._has_joined_ends = (True, target_way._has_joined_ends[1])
+        else:
+            target_way._has_joined_ends = (target_way._has_joined_ends[0], True)
+
+        way = Way(way_type, [source_point, target_point])
+        way._has_joined_ends = (True, True)
+        return way
+
+    @staticmethod
+    def _evaluate_candidate(best_way, best_point, best_score,
+                            target_point, target_angle,
+                            cand_way, cand_point, cand_seg,
+                            max_dist, max_angle):
+        if not cand_seg:
+            return (best_way, best_point, best_score)
         
-        other_angle = other_segment[0].get_angle(other_segment[1])
-        distance = target_point.get_distance(other_point)
+        cand_angle = cand_seg[0].get_angle(cand_seg[1])
+        distance = target_point.get_distance(cand_point)
 
-        angle = abs(target_angle - other_angle) % math.pi
-        if angle > (math.pi / 2):
-            angle = math.pi - angle
+        diff_in_angle = abs(target_angle - cand_angle) % math.pi
+        if diff_in_angle > (math.pi / 2):
+            diff_in_angle = math.pi - diff_in_angle
 
-        return (distance, angle)
+        if distance > max_dist or diff_in_angle > max_angle:
+            return (best_way, best_point, best_score)
+        
+        norm_distance = distance / max_dist
+        norm_angle = diff_in_angle / max_angle
+        score = (3.0 * norm_distance) + (1.0 * norm_angle)
 
+        if score < best_score:
+            return (cand_way, cand_point, score)
+        
+        return (best_way, best_point, best_score)
+        
     @staticmethod
     def create_way_from_lane(lane, step_size):
         # Determine type of lane
