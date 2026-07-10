@@ -26,7 +26,9 @@ class OsmMap:
             long, lat = self._coord_service.get_globe_coords(point.x, point.y)
             etree.SubElement(self._root, "node", id=str(point.id), visible="true", lat=str(lat), lon=str(long))
 
-        # Generate ways 
+        # Generate ways
+        for way in self._ways:
+            etree.SubElement(self._root, "way", )
 
 
     def build_and_write(self, dest):

@@ -25,9 +25,8 @@ class WayType(enum.Enum):
 class Way:
     _global_way_count = 0
 
-    def __init__(self, way_type, nodes):
+    def __init__(self, nodes):
         self._id = Way._global_way_count
-        self._type = way_type
         self._nodes = nodes
         self._start = nodes[0]
         self._end = nodes[-1]
@@ -194,4 +193,27 @@ class Way:
 
         samples = lane.sample_lane(step_size)
         return Way(lane_type, samples)
-        
+
+class RoadWay(Way):
+    def __init__(self, nodes, lane_id, speed_limit):
+        self._lane_id = lane_id
+        self._speed_limit = speed_limit
+        super().__init__(nodes)
+
+    def get_way_tags(self):
+        tags = {
+            "highway": "residential",
+            "sidewalk": "separate",
+            "surface": "asphalt"
+        }
+
+        if self._speed_limit:
+            tags["maxspeed"] = self._speed_limit + " mph"
+
+        return tags
+    
+class PedWay(Way):
+    def __init__(self, nodes):
+        super().__init__(nodes)
+
+    def get_way_tags(self):
