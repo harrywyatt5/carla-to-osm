@@ -1,7 +1,7 @@
 import math
 
 class Point:
-    _global_node_count = 0
+    _global_node_count = 1
 
     def __init__(self, x, y):
         self._id = Point._global_node_count
@@ -35,4 +35,4 @@ class Point:
         return self.id == other.id
 
     def __hash__(self):
-        return id
+        return hash(int(self.id))

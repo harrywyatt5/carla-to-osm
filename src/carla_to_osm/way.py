@@ -1,29 +1,13 @@
 from lxml import etree
-import enum
 import math
 
-class WayType(enum.Enum):
-    SIDEWALK = 0
-    ROAD = 1
-    CROSSWALK = 2
-
-    def get_way_definition_tags(self):
-        if self == WayType.SIDEWALK:
-            return {
-                "highway": "footway",
-                "footway": "sidewalk"
-            }
-        elif self == WayType.ROAD:
-            return {"highway": "residential"}
-        else:
-            return {
-                "highway": "footway",
-                "footway": "crosswalk"
-            }
-
+ACTIONABLE_WAYS = [
+    "driving",
+    "sidewalk"
+]
 
 class Way:
-    _global_way_count = 0
+    _global_way_count = 1
 
     def __init__(self, nodes):
         self._id = Way._global_way_count
@@ -39,10 +23,6 @@ class Way:
     @property
     def id(self):
         return self._id
-
-    @property
-    def type(self):
-        return self._type
 
     @property
     def start(self):
@@ -76,6 +56,9 @@ class Way:
     def nodes(self):
         return self._nodes
     
+    def get_way_tags(self):
+        return {}
+    
     def join_other_ways(self, ways, max_distance, max_angle):
         if all(self._has_joined_ends) or not self.start_seg or not self.end_seg:
             return
@@ -90,7 +73,7 @@ class Way:
         open_end_point = not self._has_joined_ends[1]
 
         for way in ways:
-            if way.type != self.type:
+            if type(way) != type(self):
                 continue
 
             if not way._has_joined_ends[0]:
@@ -126,14 +109,29 @@ class Way:
         new_way_for_start = None
         new_way_for_end = None
         if best_start_way:
-            new_way_for_start = Way._create_bridging_way(self.start, best_start_way, best_start_point, self.type)
+            new_way_for_start = self._create_bridging_way(self.start, best_start_way, best_start_point)
             self._has_joined_ends = (True, self._has_joined_ends[1])
         
         if best_end_way:
-            new_way_for_end = Way._create_bridging_way(self.end, best_end_way, best_end_point, self.type)
+            new_way_for_end = self._create_bridging_way(self.end, best_end_way, best_end_point)
             self._has_joined_ends = (self._has_joined_ends[0], True)
 
         return (new_way_for_start, new_way_for_end)
+
+    def _create_bridging_way(self, source_point, target_way, target_point):
+        if target_way.start == target_point:
+            target_way._has_joined_ends = (True, target_way._has_joined_ends[1])
+        else:
+            target_way._has_joined_ends = (target_way._has_joined_ends[0], True)
+
+        way = None
+        if isinstance(self, RoadWay):
+            way = RoadWay([source_point, target_point], self._lane_id, self._speed_limit)
+        else:
+            way = self.__class__([source_point, target_point])
+
+        way._has_joined_ends = (True, True)
+        return way
 
     def __eq__(self, other):
         if not isinstance(self, Way):
@@ -142,18 +140,7 @@ class Way:
         return self.id == self.other
 
     def __hash__(self):
-        return self.id
-
-    @staticmethod
-    def _create_bridging_way(source_point, target_way, target_point, way_type):
-        if target_way.start == target_point:
-            target_way._has_joined_ends = (True, target_way._has_joined_ends[1])
-        else:
-            target_way._has_joined_ends = (target_way._has_joined_ends[0], True)
-
-        way = Way(way_type, [source_point, target_point])
-        way._has_joined_ends = (True, True)
-        return way
+        return hash(int(self.id))
 
     @staticmethod
     def _evaluate_candidate(best_way, best_point, best_score,
@@ -184,15 +171,15 @@ class Way:
         
     @staticmethod
     def create_way_from_lane(lane, step_size):
-        # Determine type of lane
-        lane_type = None
-        if lane.type == "sidewalk":
-            lane_type = WayType.SIDEWALK
-        else:
-            lane_type = WayType.ROAD
-
         samples = lane.sample_lane(step_size)
-        return Way(lane_type, samples)
+
+        if lane.type == "sidewalk":
+            return SidewalkWay(samples)
+        elif lane.type == "driving":
+            return RoadWay(samples, lane.id, lane.speed_limit)
+        else:
+            print(f"Unknown road type '{lane.type}'. Skipping")
+            return None
 
 class RoadWay(Way):
     def __init__(self, nodes, lane_id, speed_limit):
@@ -203,6 +190,7 @@ class RoadWay(Way):
     def get_way_tags(self):
         tags = {
             "highway": "residential",
+            "lane_id": str(self._lane_id),
             "sidewalk": "separate",
             "surface": "asphalt"
         }
@@ -212,8 +200,25 @@ class RoadWay(Way):
 
         return tags
     
-class PedWay(Way):
+class SidewalkWay(Way):
     def __init__(self, nodes):
         super().__init__(nodes)
 
     def get_way_tags(self):
+        return {
+            "highway": "footway",
+            "footway": "sidewalk"
+        }
+    
+class CrosswalkWay(Way):
+    def __init__(self, nodes):
+        super().__init__(nodes)
+
+    def get_way_tags(self):
+        return {
+            "highway": "footway",
+            "footway": "crosswalk"
+        }
+    
+    def join_other_ways(self, ways, max_distance, max_angle):
+        raise NotImplementedError("join_other_ways is not possible on a Crosswalk object")

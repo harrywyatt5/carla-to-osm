@@ -10,9 +10,13 @@ dependencies = [
     "numpy>=2.5"
 ]
 
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project.optional-dependencies]
 carla = [
-    "carla>=0.9.16"
+    "carla"
 ]
 
 [project.scripts]

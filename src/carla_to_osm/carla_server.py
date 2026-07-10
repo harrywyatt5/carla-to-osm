@@ -1,6 +1,11 @@
-import carla
 from lxml import etree
 from carla_to_osm.road import Road
+try:
+    import carla
+except ImportError:
+    raise ImportError("Could not find carla package. "
+                      "Ensure to run uv sync --extra carla if are running 0.9.16. "
+                      "Otherwise, install a custom wheel using uv pip install ./custom-carla-wheel.whl")
 
 class CarlaServer:
     def __init__(self, server_ip: str, port: int, max_timeout: float):

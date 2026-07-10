@@ -7,6 +7,7 @@ class Lane:
 
     def __init__(self, parent, node):
         self._parent = parent
+        self._speed_limit = None
         self._node = node
 
     @property
@@ -15,15 +16,31 @@ class Lane:
 
     @property
     def type(self):
-        self._node.get("type")
+        return self._node.get("type")
 
     @property
     def speed_limit(self):
-        waypoint = self._parent._get_original_map().get_waypoint(self._parent.id, self.id, 0)
+        if self._speed_limit:
+            return self._speed_limit
 
-        speed_limit_landmarks = waypoint.get_landmarks_of_type(Lane._speed_limit_search_distance, 'speed_limit')
+        road_length = self._parent.road_length
+        sample_point = [0.0, 0.25 * road_length, 0.5 * road_length, 0.75 * road_length, 0.9 * road_length, road_length]
+
+        # Try and find ANYYY waypoint we can sample from
+        golden_waypoint = None
+        for sample in sample_point:
+            golden_waypoint = self._parent._get_original_map().get_waypoint_xodr(self._parent.id, self.id, sample)
+
+            if golden_waypoint:
+                break
+        
+        if not golden_waypoint:
+            return None
+
+        speed_limit_landmarks = golden_waypoint.get_landmarks_of_type(Lane._speed_limit_search_distance, 'speed_limit')
         if speed_limit_landmarks:
-            return speed_limit_landmarks[0].value
+            self._speed_limit = speed_limit_landmarks[0].value
+            return self._speed_limit
         else:
             return None
 
@@ -33,6 +50,11 @@ class Lane:
 
         for sample in np.linspace(0, self._parent.road_length, num_samples, endpoint=True):
             waypoint = self._parent._get_original_map().get_waypoint_xodr(self._parent.id, self.id, sample)
-            samples.append(Point(waypoint.transform.x, -waypoint.transform.y))
+
+            # Sometimes lanes don't exist for the whole duration of the road...
+            if waypoint is None:
+                continue
+
+            samples.append(Point(waypoint.transform.location.x, -waypoint.transform.location.y))
 
         return samples

@@ -3,7 +3,7 @@ from pyproj import CRS, Transformer
 class GlobeCoordService:
     def __init__(self, origin_lat, origin_long):
         transform_str = \
-            f"+proj=tmerc +lat_0={origin_lat} +lon_0={origin_long}" \
+            f"+proj=tmerc +lat_0={origin_lat} +lon_0={origin_long} " \
             + f"+k=1 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs"
         
         local_crs = CRS.from_proj4(transform_str)

@@ -27,8 +27,10 @@ class Road:
     @property
     def lanes(self):
         if self._lanes is None:
-            self._lanes = [Lane(self, lane) for lane in self._road_node.findall(".//lanes")]
+            self._lanes = [Lane(self, lane) for lane in self._road_node.findall(".//lane")]
 
+        print(f"For {self.id}, we have {len(self._lanes)}")
+        print(f"First is like {self._lanes[0].type}")
         return self._lanes
     
     def _get_original_map(self):
