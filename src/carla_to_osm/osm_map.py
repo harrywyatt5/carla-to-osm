@@ -1,4 +1,7 @@
 from lxml import etree
+import logging
+
+logger = logging.getLogger(__name__)
 
 class OsmMap:
     def __init__(self, coord_service, username):
@@ -11,7 +14,7 @@ class OsmMap:
     def add_ways(self, ways):
         for way in ways:
             if way in self._ways:
-                print("Duplicate way detected!")
+                logger.warning("Duplicate way detected!")
                 continue
 
             self._ways.add(way)

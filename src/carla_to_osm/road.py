@@ -1,5 +1,8 @@
 from lxml import etree
+import logging
 from carla_to_osm.lane import Lane
+
+logger = logging.getLogger(__name__)
 
 class Road:
     def __init__(self, map, node):
@@ -29,8 +32,7 @@ class Road:
         if self._lanes is None:
             self._lanes = [Lane(self, lane) for lane in self._road_node.findall(".//lane")]
 
-        print(f"For {self.id}, we have {len(self._lanes)}")
-        print(f"First is like {self._lanes[0].type}")
+        logger.debug("For lane=%i, we have %i", self.id, len(self._lanes))
         return self._lanes
     
     def _get_original_map(self):

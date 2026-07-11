@@ -1,5 +1,8 @@
 from lxml import etree
 import math
+import logging
+
+logger = logging.getLogger(__name__)
 
 ACTIONABLE_WAYS = [
     "driving",
@@ -61,7 +64,7 @@ class Way:
     
     def join_other_ways(self, ways, max_distance, max_angle):
         if all(self._has_joined_ends) or not self.start_seg or not self.end_seg:
-            return
+            return (None, None)
 
         start_angle = self.start_seg[0].get_angle(self.start_seg[1])
         end_angle = self.end_seg[0].get_angle(self.end_seg[1])
@@ -73,7 +76,8 @@ class Way:
         open_end_point = not self._has_joined_ends[1]
 
         for way in ways:
-            if type(way) != type(self):
+            # Don't compare different types of ways or the exact same way haha
+            if way == self or type(way) != type(self):
                 continue
 
             if not way._has_joined_ends[0]:
@@ -137,7 +141,7 @@ class Way:
         if not isinstance(self, Way):
             return NotImplemented
         
-        return self.id == self.other
+        return self.id == other.id
 
     def __hash__(self):
         return hash(int(self.id))
@@ -178,7 +182,7 @@ class Way:
         elif lane.type == "driving":
             return RoadWay(samples, lane.id, lane.speed_limit)
         else:
-            print(f"Unknown road type '{lane.type}'. Skipping")
+            logger.warning("Unknown road type '%s'. Skipping", lane.type)
             return None
 
 class RoadWay(Way):

@@ -4,6 +4,10 @@ from carla_to_osm.globe_coord_service import GlobeCoordService
 from carla_to_osm.osm_map import OsmMap
 import argparse
 import math
+import time
+import logging
+
+logger = logging.getLogger(__name__)
 
 def create_argparse_object() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Converts from CARLA maps currently open to a OpenStreetMaps file")
@@ -17,10 +21,33 @@ def create_argparse_object() -> argparse.ArgumentParser:
     parser.add_argument("-l", "--longitude", required=False, type=float, default=-0.1263935)
     parser.add_argument("-k", "--latitude", required=False, type=float, default=51.5053592)
     parser.add_argument("-c", "--username", required=False, type=str, default="WyattH4")
+    parser.add_argument("-e", "--log_level", required=False, type=str, default="info")
     return parser
 
+def get_logging_level(level: str) -> int:
+    level_low = level.lower()
+
+    if level_low == "debug":
+        return logging.DEBUG
+    elif level_low == "info":
+        return logging.INFO
+    elif level_low == "warn" or level_low == "warning":
+        return logging.WARN
+    elif level_low == "error":
+        return logging.ERROR
+    elif level_low == "critical":
+        return logging.CRITICAL
+    else:
+        logger.warning("Could not recognise log level of '%s'", level)
+        return logging.NOTSET
+
 def main() -> None:
+    start_time = time.time_ns()
+
     args = create_argparse_object().parse_args()
+    logging.basicConfig(
+        level=get_logging_level(args.log_level)
+    )
 
     server = CarlaServer(args.server, args.port, args.timeout)
     coord_service = GlobeCoordService(args.latitude, args.longitude)
@@ -28,10 +55,10 @@ def main() -> None:
 
     # Create ways from all our roads / lanes
     roads = server.get_map_roads()
-    print(f"We have {len(roads)} roads!")
+    logger.debug("%i roads resolved from CARLA", len(roads))
     ways = [Way.create_way_from_lane(lane, args.step_size) for road in roads for lane in road.lanes if lane.type in ACTIONABLE_WAYS]
 
-    print(f"We have {len(ways)} ways!")
+    logger.debug("%i ways generated from roads", len(ways))
 
     # See if any of our ways can be connected up together
     angle_in_radians = math.radians(args.max_angle)
@@ -40,6 +67,7 @@ def main() -> None:
         ways_tuple = way.join_other_ways(ways, args.max_distance, angle_in_radians)
         new_ways = new_ways + [unpacked_way for unpacked_way in ways_tuple if unpacked_way]
 
+    logger.debug("Found %i new connections", len(new_ways))
     ways = ways + new_ways
 
     osm_map.add_ways(ways)
@@ -48,7 +76,8 @@ def main() -> None:
     # TODO: building logic
 
     osm_map.build_and_write(args.output_file)
-    print(f"Success! File written to {args.output_file}")
+    logger.info(f"Success! File written to {args.output_file}")
+    logger.info(f"Took {((time.time_ns() - start_time) / 1_000_000)} ms to complete")
 
 if __name__ == "__main__":
     main()
