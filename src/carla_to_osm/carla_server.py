@@ -1,5 +1,6 @@
 from lxml import etree
 from carla_to_osm.road import Road
+from carla_to_osm.polygon import Polygon
 try:
     import carla
 except ImportError:
