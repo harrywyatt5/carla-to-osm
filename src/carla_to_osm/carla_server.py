@@ -1,11 +1,12 @@
 from lxml import etree
 from carla_to_osm.road import Road
-from carla_to_osm.polygon import Polygon
+from carla_to_osm.polygon import Polygon, CrosswalkPolygon
+from carla_to_osm.point import BasicPoint
 try:
     import carla
 except ImportError:
     raise ImportError("Could not find carla package. "
-                      "Ensure to run uv sync --extra carla if are running 0.9.16. "
+                      "Ensure to run uv sync --extra carla if you are running 0.9.16. "
                       "Otherwise, install a custom wheel using uv pip install ./custom-carla-wheel.whl")
 
 class CarlaServer:
@@ -20,7 +21,11 @@ class CarlaServer:
         return [Road(self._map, road) for road in opendrive_map.findall("road")] 
 
     def get_map_crosswalks(self):
-        pass
+        carla_crosswalks = self._map.get_crosswalks()
+
+        point_cache = []
+        for vertex in carla_crosswalks:
+            
 
     def get_map_environmentals(self):
         pass

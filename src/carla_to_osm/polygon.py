@@ -1,4 +1,5 @@
 from carla_to_osm.way import SidewalkWay, CrosswalkWay
+from carla_to_osm.point import Point
 import logging
 import math
 from abc import ABC, abstractmethod
@@ -29,12 +30,14 @@ class Polygon(ABC):
 class CrosswalkPolygon(Polygon):
     def __init__(self, *args):
         super().__init__(*args)
-        self._is_connected = False
 
         # For a crosswalk, we create a line through the middle of the polygon
         self._left = self._tl.create_midpoint(self._bl)
         self._middle = self._tl.create_midpoint(self._br)
         self._right = self._tr.create_midpoint(self._br)
+
+        self._left_connection = None
+        self._right_connection = None
 
     def connect_to_other_ways(self, other_ways):
         left_connecting_point, left_connecting_distance = None, math.inf
@@ -44,10 +47,42 @@ class CrosswalkPolygon(Polygon):
             # Skip ways which are not for people
             if not isinstance(way, SidewalkWay):
                 continue
+            
+            # We assume that there is at least one point in the entire set of ways
+            for point in way.nodes:
+                distance_to_left = point.get_distance(self._left)
+                distance_to_right = point.get_distance(self._right)
 
+                if distance_to_left < left_connecting_distance:
+                    left_connecting_point = point
+                    left_connecting_distance = distance_to_left
 
+                if distance_to_right < right_connecting_distance:
+                    right_connecting_point = point
+                    right_connecting_distance = distance_to_right
+        
+        logger.debug(
+            "Connected crosswalk to point %i (with distance %fm) and point %i (with distance %fm)",
+            left_connecting_point.id,
+            left_connecting_distance,
+            right_connecting_point.id,
+            right_connecting_distance
+        )
 
+        self._left_connection = left_connecting_point
+        self._right_connection = right_connecting_point
 
     def generate_points_and_way(self):
-        if not self._is_connected:
+        if not self._left_connection or not self._right_connection:
             logger.warning("Not connected to other Ways. This likely will mean the crosswalk is disconnected from the rest of the map")
+
+        crosswalk_points = [
+            self._left_connection,
+            Point(self._left),
+            Point(self._middle),
+            Point(self._right),
+            self._right_connection
+        ]
+        crosswalk_points = [point for point in crosswalk_points if point is not None]
+
+        return CrosswalkWay(crosswalk_points)
