@@ -1,5 +1,6 @@
 from carla_to_osm.carla_server import CarlaServer
-from carla_to_osm.way import Way, ACTIONABLE_WAYS
+from carla_to_osm.way import Way, CrosswalkWay, ACTIONABLE_WAYS
+from carla_to_osm.polygon import CrosswalkPolygon
 from carla_to_osm.globe_coord_service import GlobeCoordService
 from carla_to_osm.osm_map import OsmMap
 import argparse
@@ -40,6 +41,10 @@ def get_logging_level(level: str) -> int:
     else:
         logger.warning("Could not recognise log level of '%s'", level)
         return logging.NOTSET
+    
+def _build_crosswalk_ways(crosswalk_polygon: CrosswalkPolygon, other_ways: list[Way]) -> CrosswalkWay:
+    crosswalk_polygon.connect_to_other_ways(other_ways)
+    return crosswalk_polygon.generate_points_and_way()
 
 def main() -> None:
     start_time = time.time_ns()
@@ -72,7 +77,12 @@ def main() -> None:
 
     osm_map.add_ways(ways)
 
-    # TODO: crosswalk logic
+    # Crosswalk logic
+    crosswalks = server.get_map_crosswalks()
+    crosswalk_ways = [_build_crosswalk_ways(crosswalk, ways) for crosswalk in crosswalks]
+    logger.info("Created %i crosswalks", len(crosswalk_ways))
+    osm_map.add_ways(crosswalk_ways)
+
     # TODO: building logic
 
     osm_map.build_and_write(args.output_file)

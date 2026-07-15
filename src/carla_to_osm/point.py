@@ -26,14 +26,17 @@ class BasicPoint:
         if not isinstance(other, BasicPoint):
             return NotImplemented
 
-        delta = 0.001
+        delta = 0.01
         return self.x - other.x < delta and self.y - other.y < delta
     
     def __hash__(self):
         return hash(f"{self.x:.3f}:{self.y:.3f}")
     
-    def __repr__(self):
+    def __str__(self):
         return f"({self.x:.3f}, {self.y:.3f})"
+    
+    def __repr__(self):
+        return f"{self.__class__.__name__}(x={self.x}, y={self.y})"
 
 class Point(BasicPoint):
     _global_node_count = 1
