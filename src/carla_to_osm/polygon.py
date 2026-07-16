@@ -28,6 +28,8 @@ class Polygon(ABC):
         return (top_left, top_right, bottom_left, bottom_right)
 
 class CrosswalkPolygon(Polygon):
+    _controller_distance = 5.0
+
     def __init__(self, *args):
         super().__init__(*args)
 
@@ -36,8 +38,20 @@ class CrosswalkPolygon(Polygon):
         self._middle = self._tl.create_midpoint(self._br)
         self._right = self._tr.create_midpoint(self._br)
 
+        self._has_traffic_light = False
+
         self._left_connection = None
         self._right_connection = None
+
+    def try_associate_controller(self, controller):
+        points = [self._left, self._middle, self._right]
+
+        if any(point.get_distance(controller) < CrosswalkPolygon._controller_distance for point in points):
+            logger.debug("Traffic light at %s successfully associated to crosswalk", controller)
+            self._has_traffic_light = True
+            return True
+        else:
+            return False
 
     def connect_to_other_ways(self, other_ways):
         left_connecting_point, left_connecting_distance = None, math.inf

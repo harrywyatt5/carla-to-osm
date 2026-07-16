@@ -3,6 +3,7 @@ from carla_to_osm.way import Way, CrosswalkWay, ACTIONABLE_WAYS
 from carla_to_osm.polygon import CrosswalkPolygon
 from carla_to_osm.globe_coord_service import GlobeCoordService
 from carla_to_osm.osm_map import OsmMap
+from carla_to_osm.point import BasicPoint
 import argparse
 import math
 import time
@@ -42,7 +43,8 @@ def get_logging_level(level: str) -> int:
         logger.warning("Could not recognise log level of '%s'", level)
         return logging.NOTSET
     
-def _build_crosswalk_ways(crosswalk_polygon: CrosswalkPolygon, other_ways: list[Way]) -> CrosswalkWay:
+def _build_crosswalk(crosswalk_polygon: CrosswalkPolygon, other_ways: list[Way], traffic_lights: list[BasicPoint]) -> CrosswalkWay:
+    any(crosswalk_polygon.try_associate_controller(traffic_light) for traffic_light in traffic_lights)
     crosswalk_polygon.connect_to_other_ways(other_ways)
     return crosswalk_polygon.generate_points_and_way()
 
@@ -79,11 +81,13 @@ def main() -> None:
 
     # Crosswalk logic
     crosswalks = server.get_map_crosswalks()
-    crosswalk_ways = [_build_crosswalk_ways(crosswalk, ways) for crosswalk in crosswalks]
+    traffic_lights = server.get_map_traffic_lights()
+    crosswalk_ways = [_build_crosswalk(crosswalk, ways, traffic_lights) for crosswalk in crosswalks]
     logger.info("Created %i crosswalks", len(crosswalk_ways))
     osm_map.add_ways(crosswalk_ways)
 
     # TODO: building logic
+
 
     osm_map.build_and_write(args.output_file)
     logger.info(f"Success! File written to {args.output_file}")
