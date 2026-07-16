@@ -1,4 +1,5 @@
 from lxml import etree
+from carla_to_osm.point import Point
 import math
 import logging
 
@@ -226,3 +227,25 @@ class CrosswalkWay(Way):
     
     def join_other_ways(self, ways, max_distance, max_angle):
         raise NotImplementedError("join_other_ways is not possible on a Crosswalk object")
+
+class BuildingWay(Way):
+    _floor_height = 3.5
+
+    def __init__(self, points, height):
+        super().__init__(points)
+        self._height = height
+
+    def get_way_tags(self):
+        return {
+            "building": "yes",
+            "building:levels": f"{(self._height / BuildingWay._floor_height):.2f}",
+            "height": f"{self._height:.2f}"
+        }
+    
+    @staticmethod
+    def generate_building_from_bounding_box(bounding_box, actor_transform):
+        world_coords = bounding_box.get_world_vertices(actor_transform)
+        height = abs(world_coords[0] - world_coords[4])
+        coords_as_points = [Point(coord.x, coord.y) for coord in world_coords[:4]]
+
+        return BuildingWay(coords_as_points, height)

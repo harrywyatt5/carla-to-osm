@@ -1,4 +1,7 @@
 import math
+import logging
+
+logger = logging.getLogger(__name__)
 
 class BasicPoint:
     def __init__(self, x, y):
@@ -51,6 +54,9 @@ class Point(BasicPoint):
         self._id = Point._global_node_count
         Point._global_node_count = Point._global_node_count + 1
 
+    def get_point_tags(self):
+        return {}
+
     @property
     def id(self):
         return self._id
@@ -63,3 +69,25 @@ class Point(BasicPoint):
 
     def __hash__(self):
         return hash(int(self.id))
+
+class TrafficLightCrossingPoint(Point):
+    def __init__(self, x, y):
+        super().__init__(x, y)
+
+    def __init__(self, point):
+        if isinstance(point, Point):
+            logger.debug("Point being upgraded to TrafficLightCrossingPoint. It will share the same ID")
+            self._x = point.x
+            self._y = point.y
+            self._id = point.id
+        else:
+            super().__init__(point.x, point.y)
+
+    def get_point_tags(self):
+        return {
+            "crossing": "traffic_signals",
+            "crossing:island": "no",
+            "crossing:signals": "yes",
+            "crossing_ref": "pelican",
+            "highway": "crossing"
+        }

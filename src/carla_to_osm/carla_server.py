@@ -2,6 +2,7 @@ from lxml import etree
 import logging
 from carla_to_osm.road import Road
 from carla_to_osm.polygon import Polygon, CrosswalkPolygon
+from carla_to_osm.way import BuildingWay
 from carla_to_osm.point import BasicPoint
 try:
     import carla
@@ -45,4 +46,16 @@ class CarlaServer:
         return crosswalks
 
     def get_map_environmentals(self):
-        pass
+        environmentals = {}
+
+        # Extract buildings
+        buildings = self._world.get_environment_objects(carla.CityObjectLabel.Building)
+        environmentals["buildings"] = [BuildingWay.generate_building_from_bounding_box(building.bounding_box, building.transform) for building in buildings]
+
+        # Extract trees and bushes
+
+        # Extract poles?
+
+        # Extract guard rails, walls and fences
+
+        return environmentals

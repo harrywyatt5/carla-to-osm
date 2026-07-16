@@ -1,5 +1,5 @@
 from carla_to_osm.way import SidewalkWay, CrosswalkWay
-from carla_to_osm.point import Point
+from carla_to_osm.point import Point, TrafficLightCrossingPoint
 import logging
 import math
 from abc import ABC, abstractmethod
@@ -93,7 +93,7 @@ class CrosswalkPolygon(Polygon):
         crosswalk_points = [
             self._left_connection,
             Point(self._left),
-            Point(self._middle),
+            Point(self._middle) if not self._has_traffic_light else TrafficLightCrossingPoint(self._middle),
             Point(self._right),
             self._right_connection
         ]
