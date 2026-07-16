@@ -21,7 +21,10 @@ class CarlaServer:
     
     def get_map_roads(self):
         opendrive_map = etree.fromstring(self._map.to_opendrive().encode("utf-8"))
-        return [Road(self._map, road) for road in opendrive_map.findall("road")] 
+        return [Road(self._map, road) for road in opendrive_map.findall("road")]
+    
+    def get_map_traffic_lights(self):
+        traffic_lights = self._world.get_environment_objects(carla.CityObjectLabel.TrafficLight)
 
     def get_map_crosswalks(self):
         carla_crosswalks = self._map.get_crosswalks()
