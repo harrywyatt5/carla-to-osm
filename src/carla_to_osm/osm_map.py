@@ -27,7 +27,10 @@ class OsmMap:
         # Generate points as nodes
         for point in self._nodes:
             long, lat = self._coord_service.get_globe_coords(point.x, point.y)
-            etree.SubElement(self._root, "node", id=str(point.id), version="1", changeset="1", visible="true", user=str(self._username), lat=str(lat), lon=str(long))
+            node = etree.SubElement(self._root, "node", id=str(point.id), version="1", changeset="1", visible="true", user=str(self._username), lat=str(lat), lon=str(long))
+
+            for key, value in node.get_point_tags().items():
+                etree.SubElement(node, "tag", k=str(key), v=str(value))
 
         # Generate ways
         for way in self._ways:

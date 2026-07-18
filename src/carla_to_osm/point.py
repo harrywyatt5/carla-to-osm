@@ -91,3 +91,35 @@ class TrafficLightCrossingPoint(Point):
             "crossing_ref": "pelican",
             "highway": "crossing"
         }
+
+class TreePoint(Point):
+    def __init__(self, x, y, width, height):
+        super().__init__(x, y)
+        self._width = width
+        self._height = height
+
+    @property
+    def width(self):
+        return self._width
+    
+    @property
+    def height(self):
+        return self._height
+
+    def get_point_tags(self):
+        return {
+            "natural": "tree",
+            "diameter_crown": f"{self._width:.2f}",
+            "height": f"{self._height:.2f}"
+        }
+    
+class BushPoint(TreePoint):
+    def __init__(self, x, y, width, height):
+        super().__init__(x, y, width, height)
+
+    def get_point_tags(self):
+        return {
+            "natural": "bush",
+            "diameter_crown": f"{self._width:.2f}",
+            "height": f"{self._height:.2f}"
+        }

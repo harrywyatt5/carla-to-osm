@@ -1,7 +1,7 @@
 from lxml import etree
 import logging
 from carla_to_osm.road import Road
-from carla_to_osm.polygon import Polygon, CrosswalkPolygon
+from carla_to_osm.polygon import Polygon, CrosswalkPolygon, BuildingPolygon, WallLikePolygon
 from carla_to_osm.way import BuildingWay
 from carla_to_osm.point import BasicPoint
 try:
@@ -45,17 +45,31 @@ class CarlaServer:
 
         return crosswalks
 
-    def get_map_environmentals(self):
+    def get_map_environmentals(self, step_size):
         environmentals = {}
 
         # Extract buildings
         buildings = self._world.get_environment_objects(carla.CityObjectLabel.Building)
-        environmentals["buildings"] = [BuildingWay.generate_building_from_bounding_box(building.bounding_box, building.transform) for building in buildings]
+        logger.info("Importing %i buildings", len(buildings))
+        environmentals["buildings"] = [BuildingPolygon(building.bounding_box, building.transform).generate_points_and_way() for building in buildings]
 
         # Extract trees and bushes
 
         # Extract poles?
 
         # Extract guard rails, walls and fences
+        fenses = self._world.get_environment_objects(carla.CityObjectLabel.Fences)
+        walls = self._world.get_environment_objects(carla.CityObjectLabel.Walls)
+        guard_rails = self._world.get_environment_objects(carla.CityObjectLabel.GuardRail)
+        logger.info(
+            "Importing %i wall-like objects. %i fenses. %i walls. %i guard rails",
+            len(fenses) + len(walls) + len(guard_rails),
+            len(fenses),
+            len(walls),
+            len(guard_rails)
+        )
+        environmentals["wall_like"] = [WallLikePolygon(fense.bounding_box, fense.transform).generate_points_and_fence_way(step_size) for fense in fenses] \
+                                    + [WallLikePolygon(wall.bounding_box, wall.transform).generate_points_and_wall_way(step_size) for wall in walls] \
+                                    + [WallLikePolygon(guard_rail.bounding_box, guard_rail.transform).generate_points_and_guard_rail_way(step_size) for guard_rail in guard_rails]
 
-        return environmentals
+        return environmentals 

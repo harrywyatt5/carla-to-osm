@@ -241,11 +241,35 @@ class BuildingWay(Way):
             "building:levels": f"{(self._height / BuildingWay._floor_height):.2f}",
             "height": f"{self._height:.2f}"
         }
-    
-    @staticmethod
-    def generate_building_from_bounding_box(bounding_box, actor_transform):
-        world_coords = bounding_box.get_world_vertices(actor_transform)
-        height = abs(world_coords[0] - world_coords[4])
-        coords_as_points = [Point(coord.x, coord.y) for coord in world_coords[:4]]
 
-        return BuildingWay(coords_as_points, height)
+class FenceWay(Way):
+    def __init__(self, nodes, height):
+        super().__init__(nodes)
+        self._height = height
+
+    def get_way_tags(self):
+        return {
+            "barrier": "fence",
+            "height": f"{self._height:.2f}"
+        }
+
+class WallWay(Way):
+    def __init__(self, nodes, height):
+        super().__init__(nodes)
+        self._height = height
+
+    def get_way_tags(self):
+        return {
+            "barrier": "wall",
+            "height": f"{self._height:.2f}"
+        }
+
+class GuardRailWay(Way):
+    def __init__(self, nodes, height):
+        super().__init__(nodes)
+        self._height = height
+
+    def get_way_tags(self):
+        return {
+            "barrier": "guard_rail"
+        }

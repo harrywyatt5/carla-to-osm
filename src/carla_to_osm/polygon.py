@@ -1,15 +1,36 @@
-from carla_to_osm.way import SidewalkWay, CrosswalkWay
-from carla_to_osm.point import Point, TrafficLightCrossingPoint
+from carla_to_osm.way import SidewalkWay, CrosswalkWay, BuildingWay, WallWay, FenceWay, GuardRailWay
+from carla_to_osm.point import BasicPoint, Point, TrafficLightCrossingPoint
 import logging
 import math
+import numpy as np
 from abc import ABC, abstractmethod
 
 logger = logging.getLogger(__name__)
 
 class Polygon(ABC):
-    def __init__(self, *args):
-        self._tl, self._tr, self._bl, self._br = Polygon._reorder_points(args)
+    def __init__(self, points):
+        self._tl, self._tr, self._bl, self._br = Polygon._reorder_points(points)
+        self._height = 0.0
+        self._length = abs(self._tl.y - self._bl.y)
+        self._width = abs(self._tl.x - self._tr.x)
         logger.debug("Polygon at %s, %s, %s, %s", self._tl, self._tr, self._bl, self._br)
+
+    def __init__(self, bounding_box, transform):
+        world_coords = bounding_box.get_world_vertices(transform)
+        self._height = abs(world_coords[0] - world_coords[4])
+        self.__init__([BasicPoint(coord.x, coord.y) for coord in world_coords[:4]])
+
+    @property
+    def height(self):
+        return self._height
+    
+    @property
+    def length(self):
+        return self._length
+    
+    @property
+    def width(self):
+        return self._width
 
     @abstractmethod
     def generate_points_and_way(self):
@@ -31,7 +52,7 @@ class CrosswalkPolygon(Polygon):
     _controller_distance = 5.0
 
     def __init__(self, *args):
-        super().__init__(*args)
+        super().__init__(args)
 
         # For a crosswalk, we create a line through the middle of the polygon
         self._left = self._tl.create_midpoint(self._bl)
@@ -100,3 +121,41 @@ class CrosswalkPolygon(Polygon):
         crosswalk_points = [point for point in crosswalk_points if point is not None]
 
         return CrosswalkWay(crosswalk_points)
+
+class BuildingPolygon(Polygon):
+    def __init__(self, bounding_box, transform):
+        super().__init__(bounding_box, transform)
+
+    def generate_points_and_way(self):
+        points = map([self._tl, self._tr, self._br, self._bl], lambda item : Point(item))
+        return BuildingWay(points + [points[0]], self._height)
+
+class WallLikePolygon(Polygon):
+    def __init__(self, bounding_box, transform):
+        super().__init__(bounding_box, transform)
+        self._top = self._tl.create_midpoint(self._tr)
+        self._bottom = self._bl.create_midpoint(self._br)
+
+    def generate_points_and_way(self):
+        raise NotImplementedError("Use specialised function for specific ways")
+    
+    def _generate_points_and_way(self, class_type, step_size):
+        distance = self._top.get_distance(self._bottom)
+        num_samples = int(distance / step_size)
+        points = []
+
+        for i in np.linspace(0, distance, num_samples, endpoint=True):
+            x = self._bottom.x + i * (self._top.x - self._bottom.x)
+            y = self._bottom.y + i * (self._top.y - self._bottom.y)
+            points.append(Point(x, y))
+
+        return class_type(points, self._height)
+
+    def generate_points_and_fence_way(self, step_size):
+        return self._generate_points_and_way(FenceWay, step_size)
+    
+    def generate_points_and_wall_way(self, step_size):
+        return self._generate_points_and_way(WallWay, step_size)
+    
+    def generate_points_and_guard_rail_way(self, step_size):
+        return self._generate_points_and_way(GuardRailWay, step_size)
