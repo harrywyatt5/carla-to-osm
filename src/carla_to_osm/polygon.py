@@ -132,23 +132,36 @@ class CrosswalkPolygon(Polygon):
 
 class BuildingPolygon(Polygon):
     def __init__(self, bounding_box, transform):
-        world_coords = bounding_box.get_world_vertices(transform)
+        world_coords = sorted(bounding_box.get_world_vertices(transform), key=lambda item : item.z)[:4]
         
-        super().__init__([BasicPoint(coord.x, coord.y) for coord in world_coords[:4]])
-        self._height = abs(world_coords[0].y - world_coords[4].y)
+        super().__init__([BasicPoint(coord.x, -coord.y) for coord in world_coords])
+        self._height = bounding_box.extent.z * 2.0
 
     def generate_points_and_way(self):
-        points = list(map(lambda item : Point(item), [self._tl, self._tr, self._br, self._bl]))
+        points = list(map(lambda item : Point(item), [self._p0, self._p1, self._p2, self._p3]))
         return BuildingWay(points + [points[0]], self._height)
 
 class WallLikePolygon(Polygon):
     def __init__(self, bounding_box, transform):
-        world_coords = bounding_box.get_world_vertices(transform)
+        world_coords = sorted(bounding_box.get_world_vertices(transform), key=lambda item : item.z)[:4]
         
-        super().__init__([BasicPoint(coord.x, coord.y) for coord in world_coords[:4]])
-        self._height = abs(world_coords[0].z - world_coords[4].z)
-        self._top = self._tl.create_midpoint(self._tr)
-        self._bottom = self._bl.create_midpoint(self._br)
+        super().__init__([BasicPoint(coord.x, -coord.y) for coord in world_coords])
+        self._height = bounding_box.extent.z * 2.0
+
+        # Calculate the midpoints of the perimeter edges
+        mid_edge_a = self._p0.create_midpoint(self._p1)
+        mid_edge_b = self._p1.create_midpoint(self._p2)
+        mid_edge_c = self._p2.create_midpoint(self._p3)
+        mid_edge_d = self._p3.create_midpoint(self._p0)
+
+        # The centerline of a wall runs along its longest dimension.
+        # We connect the midpoints of the two shortest edges (the wall's thickness).
+        if self._p0.get_distance(self._p1) < self._p1.get_distance(self._p2):
+            self._top = mid_edge_a
+            self._bottom = mid_edge_c
+        else:
+            self._top = mid_edge_b
+            self._bottom = mid_edge_d
 
     def generate_points_and_way(self):
         raise NotImplementedError("Use specialised function for specific ways")

@@ -25,7 +25,7 @@ class CarlaServer:
         return [Road(self._map, road) for road in opendrive_map.findall("road")]
     
     def get_map_traffic_lights(self):
-        return [BasicPoint(traffic_light.transform.location.x, traffic_light.transform.location.y) for traffic_light in self._world.get_environment_objects(carla.CityObjectLabel.TrafficLight)]
+        return [BasicPoint(traffic_light.transform.location.x, -traffic_light.transform.location.y) for traffic_light in self._world.get_environment_objects(carla.CityObjectLabel.TrafficLight)]
 
     def get_map_crosswalks(self):
         carla_crosswalks = self._map.get_crosswalks()

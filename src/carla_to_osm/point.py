@@ -80,7 +80,7 @@ class Point(BasicPoint):
         height = enviroment_object.bounding_box.extent.z * 2.0
 
         cls = TreePoint if "tree" in enviroment_object.name.lower() else BushPoint
-        return cls(enviroment_object.transform.location.x, enviroment_object.transform.location.y, width, height)
+        return cls(enviroment_object.transform.location.x, -enviroment_object.transform.location.y, width, height)
     
     @staticmethod
     def create_pole_point(environment_object):
@@ -88,7 +88,7 @@ class Point(BasicPoint):
 
         name = environment_object.name.lower()
         cls = LightPoint if "light" in name or "lamp" in name else PolePoint
-        return cls(environment_object.transform.location.x, environment_object.transform.location.y, height)
+        return cls(environment_object.transform.location.x, -environment_object.transform.location.y, height)
 
 class TrafficLightCrossingPoint(Point):
     @singledispatchmethod
