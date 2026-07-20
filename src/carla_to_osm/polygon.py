@@ -11,11 +11,15 @@ logger = logging.getLogger(__name__)
 
 class Polygon(ABC):
     def __init__(self, points):
-        self._tl, self._tr, self._bl, self._br = Polygon._reorder_points(points)
+        self._p0, self._p1, self._p2, self._p3 = Polygon._reorder_points(points)
         self._height = 0.0
-        self._length = abs(self._tl.y - self._bl.y)
-        self._width = abs(self._tl.x - self._tr.x)
-        logger.debug("Polygon at %s, %s, %s, %s", self._tl, self._tr, self._bl, self._br)
+
+        edge_1 = self._p0.get_distance(self._p1)
+        edge_2 = self._p1.get_distance(self._p2)
+        self._width = min(edge_1, edge_2)
+        self._length = max(edge_1, edge_2)
+        
+        logger.debug("Polygon at %s, %s, %s, %s", self._p0, self._p1, self._p2, self._p3)
 
     @property
     def height(self):
@@ -35,29 +39,36 @@ class Polygon(ABC):
 
     @staticmethod
     def _reorder_points(points):
-        sort_by_x = sorted(points, key=lambda item : item.x)
-
-        left_points = sort_by_x[:2]
-        right_points = sort_by_x[2:]
-
-        # Sort by Y
-        top_left, bottom_left = sorted(left_points, key=lambda item : item.y)
-        top_right, bottom_right = sorted(right_points, key=lambda item : item.y)
-        return (top_left, top_right, bottom_left, bottom_right)
+        if not points:
+            return points
+            
+        cx = sum(p.x for p in points) / len(points)
+        cy = sum(p.y for p in points) / len(points)
+        return sorted(points, key=lambda p: math.atan2(p.y - cy, p.x - cx))
 
 class CrosswalkPolygon(Polygon):
-    _controller_distance = 5.0
+    _controller_distance = 10.0
 
     def __init__(self, args):
         super().__init__(args)
 
-        # For a crosswalk, we create a line through the middle of the polygon
-        self._left = self._tl.create_midpoint(self._bl)
-        self._middle = self._tl.create_midpoint(self._br)
-        self._right = self._tr.create_midpoint(self._br)
+        # Midpoints of the edges
+        mid_edge_a = self._p0.create_midpoint(self._p1)
+        mid_edge_b = self._p1.create_midpoint(self._p2)
+        mid_edge_c = self._p2.create_midpoint(self._p3)
+        mid_edge_d = self._p3.create_midpoint(self._p0)
 
+        # The walking path spans the longer dimension across the street.
+        # So we connect the midpoints of the shorter edges.
+        if self._p0.get_distance(self._p1) < self._p1.get_distance(self._p2):
+            self._left = mid_edge_a
+            self._right = mid_edge_c
+        else:
+            self._left = mid_edge_b
+            self._right = mid_edge_d
+
+        self._middle = self._left.create_midpoint(self._right)
         self._has_traffic_light = False
-
         self._left_connection = None
         self._right_connection = None
 
