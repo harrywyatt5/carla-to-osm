@@ -132,7 +132,9 @@ class CrosswalkPolygon(Polygon):
 
 class BuildingPolygon(Polygon):
     def __init__(self, bounding_box, transform):
-        world_coords = sorted(bounding_box.get_world_vertices(transform), key=lambda item : item.z)[:4]
+        corrected_transform = carla.Transform(bounding_box.location, transform.rotation)
+        local_bbox = carla.BoundingBox(carla.Location(0, 0, 0), bounding_box.extent)
+        world_coords = sorted(local_bbox.get_world_vertices(transform), key=lambda item : item.z)[:4]
         
         super().__init__([BasicPoint(coord.x, -coord.y) for coord in world_coords])
         self._height = bounding_box.extent.z * 2.0
@@ -143,7 +145,9 @@ class BuildingPolygon(Polygon):
 
 class WallLikePolygon(Polygon):
     def __init__(self, bounding_box, transform):
-        world_coords = sorted(bounding_box.get_world_vertices(transform), key=lambda item : item.z)[:4]
+        corrected_transform = carla.Transform(bounding_box.location, transform.rotation)
+        local_bbox = carla.BoundingBox(carla.Location(0, 0, 0), bounding_box.extent)
+        world_coords = sorted(local_bbox.get_world_vertices(transform), key=lambda item : item.z)[:4]
         
         super().__init__([BasicPoint(coord.x, -coord.y) for coord in world_coords])
         self._height = bounding_box.extent.z * 2.0

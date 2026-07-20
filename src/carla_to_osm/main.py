@@ -87,9 +87,9 @@ def main() -> None:
     osm_map.add_ways(crosswalk_ways)
 
     # # Object logic
-    # additional_objects = server.get_map_environmentals(0.1)
-    # osm_map.add_ways(additional_objects["buildings"] + additional_objects["wall_like"])
-    # osm_map.add_nodes(additional_objects["vegetation"] + additional_objects["poles"])
+    additional_objects = server.get_map_environmentals(0.1)
+    osm_map.add_ways(additional_objects["buildings"] + additional_objects["wall_like"])
+    osm_map.add_nodes(additional_objects["vegetation"] + additional_objects["poles"])
 
     osm_map.build_and_write(args.output_file)
     logger.info(f"Success! File written to {args.output_file}")
