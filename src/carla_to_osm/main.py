@@ -15,7 +15,7 @@ def create_argparse_object() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Converts from CARLA maps currently open to a OpenStreetMaps file")
     parser.add_argument("-o", "--output_file", required=False, type=str, default="./map.osm")
     parser.add_argument("-s", "--server", required=False, type=str, default="127.0.0.1")
-    parser.add_argument("-n", "--step_size", required=False, type=float, default=0.5)
+    parser.add_argument("-n", "--step_size", required=False, type=float, default=5.0)
     parser.add_argument("-p", "--port", required=False, type=int, default=2000)
     parser.add_argument("-t", "--timeout", required=False, type=float, default=10.0)
     parser.add_argument("-d", "--max_distance", required=False, type=float, default=5.0)
@@ -86,10 +86,10 @@ def main() -> None:
     logger.info("Created %i crosswalks", len(crosswalk_ways))
     osm_map.add_ways(crosswalk_ways)
 
-    # Object logic
-    additional_objects = server.get_map_environmentals()
-    osm_map.add_ways(additional_objects["buildings"] + additional_objects["wall_like"])
-    osm_map.add_nodes(additional_objects["vegetation"] + additional_objects["poles"])
+    # # Object logic
+    # additional_objects = server.get_map_environmentals(0.1)
+    # osm_map.add_ways(additional_objects["buildings"] + additional_objects["wall_like"])
+    # osm_map.add_nodes(additional_objects["vegetation"] + additional_objects["poles"])
 
     osm_map.build_and_write(args.output_file)
     logger.info(f"Success! File written to {args.output_file}")

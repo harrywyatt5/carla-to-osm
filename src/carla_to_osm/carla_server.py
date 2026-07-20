@@ -34,9 +34,9 @@ class CarlaServer:
         point_cache = []
         for vertex in carla_crosswalks:
             # Z coord in Carla is up and down. We can ignore it as we are mapping to 2D plane.
-            as_basic_point = BasicPoint(vertex.x, vertex.y)
+            as_basic_point = BasicPoint(vertex.x, -vertex.y)
 
-            if as_basic_point.get_distance(point_cache[0]) < 0.01:
+            if point_cache and as_basic_point.get_distance(point_cache[0]) < 0.01:
                 logger.debug("Crosswalk at %s has %i points", as_basic_point, len(point_cache))
                 crosswalks.append(CrosswalkPolygon(point_cache))
                 point_cache = []
@@ -49,7 +49,7 @@ class CarlaServer:
         environmentals = {}
 
         # Extract buildings
-        buildings = self._world.get_environment_objects(carla.CityObjectLabel.Building)
+        buildings = self._world.get_environment_objects(carla.CityObjectLabel.Buildings)
         logger.info("Importing %i buildings", len(buildings))
         environmentals["buildings"] = [BuildingPolygon(building.bounding_box, building.transform).generate_points_and_way() for building in buildings]
 

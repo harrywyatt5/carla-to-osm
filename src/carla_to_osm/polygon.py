@@ -1,9 +1,11 @@
 from carla_to_osm.way import SidewalkWay, CrosswalkWay, BuildingWay, WallWay, FenceWay, GuardRailWay
 from carla_to_osm.point import BasicPoint, Point, TrafficLightCrossingPoint
 import logging
+import carla
 import math
 import numpy as np
 from abc import ABC, abstractmethod
+from functools import singledispatchmethod
 
 logger = logging.getLogger(__name__)
 
@@ -14,11 +16,6 @@ class Polygon(ABC):
         self._length = abs(self._tl.y - self._bl.y)
         self._width = abs(self._tl.x - self._tr.x)
         logger.debug("Polygon at %s, %s, %s, %s", self._tl, self._tr, self._bl, self._br)
-
-    def __init__(self, bounding_box, transform):
-        world_coords = bounding_box.get_world_vertices(transform)
-        self._height = abs(world_coords[0] - world_coords[4])
-        self.__init__([BasicPoint(coord.x, coord.y) for coord in world_coords[:4]])
 
     @property
     def height(self):
@@ -38,20 +35,20 @@ class Polygon(ABC):
 
     @staticmethod
     def _reorder_points(points):
-        sort_by_x = sorted(points, lambda item : item.x)
+        sort_by_x = sorted(points, key=lambda item : item.x)
 
         left_points = sort_by_x[:2]
         right_points = sort_by_x[2:]
 
         # Sort by Y
-        top_left, bottom_left = sorted(left_points, lambda item : item.y)
-        top_right, bottom_right = sorted(right_points, lambda item : item.y)
+        top_left, bottom_left = sorted(left_points, key=lambda item : item.y)
+        top_right, bottom_right = sorted(right_points, key=lambda item : item.y)
         return (top_left, top_right, bottom_left, bottom_right)
 
 class CrosswalkPolygon(Polygon):
     _controller_distance = 5.0
 
-    def __init__(self, *args):
+    def __init__(self, args):
         super().__init__(args)
 
         # For a crosswalk, we create a line through the middle of the polygon
@@ -124,15 +121,21 @@ class CrosswalkPolygon(Polygon):
 
 class BuildingPolygon(Polygon):
     def __init__(self, bounding_box, transform):
-        super().__init__(bounding_box, transform)
+        world_coords = bounding_box.get_world_vertices(transform)
+        
+        super().__init__([BasicPoint(coord.x, coord.y) for coord in world_coords[:4]])
+        self._height = abs(world_coords[0].y - world_coords[4].y)
 
     def generate_points_and_way(self):
-        points = map([self._tl, self._tr, self._br, self._bl], lambda item : Point(item))
+        points = list(map(lambda item : Point(item), [self._tl, self._tr, self._br, self._bl]))
         return BuildingWay(points + [points[0]], self._height)
 
 class WallLikePolygon(Polygon):
     def __init__(self, bounding_box, transform):
-        super().__init__(bounding_box, transform)
+        world_coords = bounding_box.get_world_vertices(transform)
+        
+        super().__init__([BasicPoint(coord.x, coord.y) for coord in world_coords[:4]])
+        self._height = abs(world_coords[0].z - world_coords[4].z)
         self._top = self._tl.create_midpoint(self._tr)
         self._bottom = self._bl.create_midpoint(self._br)
 
@@ -141,10 +144,10 @@ class WallLikePolygon(Polygon):
     
     def _generate_points_and_way(self, class_type, step_size):
         distance = self._top.get_distance(self._bottom)
-        num_samples = int(distance / step_size)
+        num_samples = max(int(distance / step_size) + 1, 2)
         points = []
 
-        for i in np.linspace(0, distance, num_samples, endpoint=True):
+        for i in np.linspace(0, 1.0, num_samples, endpoint=True):
             x = self._bottom.x + i * (self._top.x - self._bottom.x)
             y = self._bottom.y + i * (self._top.y - self._bottom.y)
             points.append(Point(x, y))

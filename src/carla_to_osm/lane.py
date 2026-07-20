@@ -45,7 +45,7 @@ class Lane:
             return None
 
     def sample_lane(self, step_size):
-        num_samples = int(self._parent.road_length / step_size)
+        num_samples = max(2, int(self._parent.road_length / step_size) + 1)
         samples = []
 
         for sample in np.linspace(0, self._parent.road_length, num_samples, endpoint=True):
