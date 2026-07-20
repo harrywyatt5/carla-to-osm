@@ -3,7 +3,7 @@ import logging
 from carla_to_osm.road import Road
 from carla_to_osm.polygon import Polygon, CrosswalkPolygon, BuildingPolygon, WallLikePolygon
 from carla_to_osm.way import BuildingWay
-from carla_to_osm.point import BasicPoint
+from carla_to_osm.point import BasicPoint, Point
 try:
     import carla
 except ImportError:
@@ -54,8 +54,14 @@ class CarlaServer:
         environmentals["buildings"] = [BuildingPolygon(building.bounding_box, building.transform).generate_points_and_way() for building in buildings]
 
         # Extract trees and bushes
+        veg_objs = self._world.get_environment_objects(carla.CityObjectLabel.Vegetation)
+        environmentals["vegetation"] = [Point.create_vegetation_point(veg) for veg in veg_objs]
+        logger.info("Importing %i vegetation objects", len(environmentals["vegetation"]))
 
         # Extract poles?
+        poles = self._world.get_environment_objects(carla.CityObjectLabel.Poles)
+        environmentals["poles"] = [Point.create_pole_point(pole) for pole in poles]
+        logger.info("Importing %i pole objects", len(environmentals["poles"]))
 
         # Extract guard rails, walls and fences
         fenses = self._world.get_environment_objects(carla.CityObjectLabel.Fences)

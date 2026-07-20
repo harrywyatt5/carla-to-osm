@@ -69,6 +69,23 @@ class Point(BasicPoint):
 
     def __hash__(self):
         return hash(int(self.id))
+    
+    @staticmethod
+    def create_vegetation_point(enviroment_object):
+        # Get height and width
+        width = max(enviroment_object.bounding_box.extent.x * 2.0, enviroment_object.bounding_box.extent.y * 2.0)
+        height = enviroment_object.bounding_box.extent.z * 2.0
+
+        cls = TreePoint if "tree" in enviroment_object.name.lower() else BushPoint
+        return cls(enviroment_object.transform.location.x, enviroment_object.transform.location.y, width, height)
+    
+    @staticmethod
+    def create_pole_point(environment_object):
+        height = environment_object.bounding_box.extent.z * 2.0
+
+        name = environment_object.name.lower()
+        cls = LightPoint if "light" in name or "lamp" in name else PolePoint
+        return cls(environment_object.transform.location.x, environment_object.transform.location.y, height)
 
 class TrafficLightCrossingPoint(Point):
     def __init__(self, x, y):
@@ -121,5 +138,28 @@ class BushPoint(TreePoint):
         return {
             "natural": "bush",
             "diameter_crown": f"{self._width:.2f}",
+            "height": f"{self._height:.2f}"
+        }
+
+class PolePoint(Point):
+    def __init__(self, x, y, height):
+        self._height = height
+        super().__init__(x, y)
+
+    def get_point_tags(self):
+        return {
+            "man_made": "utility_pole",
+            "height": f"{self._height:.2f}"
+        }
+    
+class LightPoint(Point):
+    def __init__(self, x, y, height):
+        self._height = height
+        super().__init__(x, y)
+
+    def get_point_tags(self):
+        return {
+            "highway": "street_lamp",
+            "lamp_mount": "pole",
             "height": f"{self._height:.2f}"
         }
