@@ -1,5 +1,6 @@
 import math
 import logging
+from functools import singledispatchmethod
 
 logger = logging.getLogger(__name__)
 
@@ -44,12 +45,14 @@ class BasicPoint:
 class Point(BasicPoint):
     _global_node_count = 1
 
+    @singledispatchmethod
     def __init__(self, x, y):
         super().__init__(x, y)
         self._id = Point._global_node_count
         Point._global_node_count = Point._global_node_count + 1
 
-    def __init__(self, point):
+    @__init__.register
+    def _(self, point: BasicPoint):
         super().__init__(point.x, point.y)
         self._id = Point._global_node_count
         Point._global_node_count = Point._global_node_count + 1
@@ -88,17 +91,20 @@ class Point(BasicPoint):
         return cls(environment_object.transform.location.x, environment_object.transform.location.y, height)
 
 class TrafficLightCrossingPoint(Point):
+    @singledispatchmethod
     def __init__(self, x, y):
         super().__init__(x, y)
 
-    def __init__(self, point):
-        if isinstance(point, Point):
-            logger.debug("Point being upgraded to TrafficLightCrossingPoint. It will share the same ID")
-            self._x = point.x
-            self._y = point.y
-            self._id = point.id
-        else:
-            super().__init__(point.x, point.y)
+    @__init__.register
+    def _(self, point: BasicPoint):
+        super().__init__(point.x, point.y)
+
+    @__init__.register
+    def _(self, point: Point):
+        logger.debug("Point being upgraded to TrafficLightCrossingPoint. It will share the same ID")
+        self._x = point.x
+        self._y = point.y
+        self._id = point.id
 
     def get_point_tags(self):
         return {
